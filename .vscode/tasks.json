@@ -1,0 +1,23 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Compile",
+            "command": "make",
+            "problemMatcher": "$gcc"
+        },
+        {
+            "label": "Assemble test code",
+            "command": "nasm",
+            "args": ["-fbin","-oprog.bin","prog.asm"],
+            "problemMatcher": []
+        },
+        {
+            "label": "Run",
+            "command": "${workspaceFolder}/main",
+            "problemMatcher": [],
+            "dependsOn": ["Compile","Assemble test code"],
+            "group": "test"
+        }
+    ]
+}
