@@ -2,26 +2,28 @@ RDM: Three-instruction RISC ISA with 16-bit instructions
 
 There are 124 64-bit registers. Each register can either be a physical register, or a *pseudo-register*. Pseudo-registers are like device files: They are actually proxies to external components like RAM.
 
-00h-17h: General-purpose registers d0-d23.
-18h-2Fh: GPR shadows d0s-d23s.
-30h-37h: Accumulators a0-a7.
-38h-3Fh: Accumulator shadows a0s-a7s.
-40h-47h: Bit-fields b0-b7.
-48h-4Fh: Bit-field shadows b0s-b7s.
-50h-5Fh: Pointers p0-p15. (They do not need to be 64-bit aligned.)
-60h-6Fh: Memory pseudo-registers m0-m15, with mX referencing 64 bits in memory beginning at byte pX.
-70h-73h: Utility registers u0-u3. (u1-u3 are not currently used and can be used as normal GPRs.)
-74h-77h: Utility shadows u0s-u3s.
-78h:     d23s write counter dc.
-79h:     Program counter pc.
-7Ah:     Write bit-mask bm.
-7Bh:     Write mask shadow bms.
-7Ch:     Loop pointer register lp.
-7Dh:     Loop control register lc.
+00h-0Fh: General-purpose registers d0-d15.
+10h-1Fh: GPR shadows d0s-d15s.
+20h-27h: Accumulators a0-a7.
+28h-2Fh: Accumulator shadows a0s-a7s.
+30h-37h: Bit-fields b0-b7.
+38h-3Fh: Bit-field shadows b0s-b7s.
+40h-4Fh: Pointers p0-p15. (They do not need to be 64-bit aligned.)
+50h-5Fh: Memory pseudo-registers m0-m15, with mX referencing 64 bits in memory beginning at byte pX.
+60h-63h: Utility registers u0-u3. (u1-u3 are not currently used and can be used as normal GPRs.)
+64h-67h: Utility shadows u0s-u3s.
+68h:     d15s write counter dc.
+69h:     Program counter pc.
+6Ah:     Write bit-mask bm.
+6Bh:     Write mask shadow bms.
+6Ch:     Loop pointer register lp.
+6Dh:     Loop control register lc.
+6Eh:     Function control register fc.
 
-When a non-shadow register is updated, its corresponding shadow is also overwritten with the new value, but updating the shadow will not change the original register. Whenever a write happens to d23s, dc is incremented, and whenever a write happens to d23, dc is reset to zero.
+When a non-shadow register is updated, its corresponding shadow is also overwritten with the new value, but updating the shadow will not change the original register. Whenever a write happens to d15s, dc is incremented (unmasked), and whenever a write happens to d15, dc is reset to zero.
 
 Whenever a nonzero value is written to lc, pc is set to lp (unmasked).
+Instead of writing value V to fc, unmasked copy pc (which points to the next instruction) to fc, then copy V to pc (whether this is masked depends on the instruction).
 
 Notation: a lowercase n references an arbitrary register type, and X references an arbitrary register index. "/s" after a register or register range means "it or its shadow". Therefore, "aX/s" means "any accumulator or accumulator shadow register" and nX means "any non-shadow register" (this also includes special registers like dc, pc and bm).
 
@@ -31,29 +33,30 @@ XSSSSSSS YDDDDDDD
 
 Where bit X select the instruction, bit Y selects the instruction mode, S selects the source register, and D selects the destination register.
 
-Each instruction reads the contents of the source register and combines it with the destination by a specified set of rules. Writes to registers that are not bm/s are masked with bms. (Of course, the normal incrementing of pc is not masked.)
+Each instruction reads the contents of the source register and combines it with the destination by a specified set of rules.
+Writes to registers that are not bm/s are masked with bms. If an instruction does not write to bms, bms is reset to bm after the execution of that instruction.
 
+BEFORE an instruction executes, 2 is added to pc (not masked).
 
 X = 0: OPR Operate
 
 If Y = 1 and S = D, zeroes D. Otherwise, combines the source value with the destination value based on the destination register type:
 
-D = dX/s, pX, mX, uX/s, dc, pc, bm/s: Copy value. Y is reserved and should be zero.
+D = dX/s, pX, mX, uX/s, dc, pc, bm/s, lp, lc, fc: Copy value. Y is reserved and should be zero.
 D = aX/s: Add value to accumulator. If Y = 1, overwrite accumulator with value instead.
 D = bX/s: OR value to bit-field. If Y = 1, overwrite bit-field with value instead.
 
 
 X = 1, S = D: LDV Load value
 
-Copies the 32-bit immediate that comes immediately after the instruction to D, overwriting it. If and only if Y = 0, the write is masked with bms. pc is increased by 6 instead of 2 after this instruction to skip over the immediate.
+Copies the 32-bit immediate (sign extended) that comes immediately after the instruction to D, overwriting it. If and only if Y = 0, the write is masked with bms. pc is increased by 6 instead of 2 after this instruction to skip over the immediate.
 
 
 X = 1, S != D: CAL Calculate
 
 Combines the source value with the destination value(s) based on the destination register type:
 
-D = dX/s, X <= 16: Write 8 bytes of S into dX/s, dX+1/s, dX+2/s, ..., dX+7/s with dX/s being the least significant byte if Y = 0, otherwise it is the most significant byte. A bit is only written if it corresponds to a masked bit in S.
-D = dX/s, X > 16: Requires S = dY/s. Combines the lowest bytes of dY/s, dY+1/s, dY+2/s, ..., dY+7/s into D. The byte order is computed the same way as above.
+D = dX/s, pX, mX, uX/s (X>0), dc, lp, fc: Reserved, do not use.
 D = aX/s: Combine value to accumulator based on bits 0-2 of u0s. If Y = 1, copies the result into S as well as D, except for u0s = 011, where the remainder is put into S instead while the quotient is put in D.
 000: Add to D.
 001: Subtract from D.
@@ -70,8 +73,7 @@ D = bX/s: Combine value to bit-field based on bits 3-5 of u0s. If Y = 1, copies 
 110: LSH D by S.
 111: RSH D by S.
 
-D = pX, mX, uX/s (X>0), dc, lp: Reserved, do not use.
-D = u0/s: Copy the first instruction byte into D with mask 63, ignoring bms. If Y = 1, the mask is 7 if the 7th lowest bit of the first byte is clear, otherwise the mask is 56.
-D = pc: Unmasked add the lower 7 bits of the first instruction byte to pc.
-D = bm/s: Let the lower 7 bits of the first instruction byte be L, set the i-th lowest bit of D to (L-64 <= i && i < L).
-D = lc: Unmasked add S to lc if Y = 0, else subtract S from lc.
+D = u0/s: Copy the first instruction byte into D with mask 7, ignoring bms. If Y = 1, left shift the first instruction byte by 3 and write into D with mask 56 instead.
+D = pc: Unmasked add the lower 7 bits of the first instruction byte(sign-extended) to pc.
+D = bm/s, bmt: Let the lower 7 bits of the first instruction byte be L, set the i-th lowest bit of D to (L-64 <= i && i < L).
+D = lc: add S to lc if Y = 0, else subtract S from lc.

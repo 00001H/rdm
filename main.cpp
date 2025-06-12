@@ -1,4 +1,5 @@
 #include<cppp/int-width.hpp>
+#include<iostream>
 #include<cstddef>
 #include<cstdint>
 #include<utility>
@@ -90,14 +91,17 @@ constexpr static std::size_t BIT_INDEX = 2uz;
 constexpr static std::size_t PTR_INDEX = 3uz;
 constexpr static std::size_t MEM_INDEX = 4uz;
 constexpr static std::size_t UTIL_INDEX = 5uz;
-constexpr static std::size_t D23S_COUNTER_INDEX = 6uz;
+constexpr static std::size_t D15S_COUNTER_INDEX = 6uz;
 constexpr static std::size_t PROGRAM_COUNTER_INDEX = 7uz;
 constexpr static std::size_t WRITE_MASK_INDEX = 8uz;
 constexpr static std::size_t LOOP_POINTER_INDEX = 9uz;
 constexpr static std::size_t LOOP_CONTROL_INDEX = 10uz;
+constexpr static std::size_t FUNCTION_CONTROL_INDEX = 11uz;
+constexpr static std::uint64_t NMASK = ~static_cast<std::uint64_t>(0);
+constexpr static std::size_t MEMSIZE = 1048576uz;
 class ProgramState{
     RegisterSpace spc;
-    std::array<std::byte,1048576uz> mem;
+    std::array<std::byte,MEMSIZE> mem;
     reg_state regs;
     public:
         ProgramState(RegisterSpace s) : spc(std::move(s)), regs{0}{}
@@ -113,13 +117,13 @@ class ProgramState{
         RegisterSpace::MatchResult range_of(reg r) const{
             return spc.test(r);
         }
-        std::array<std::byte,1048576uz>& memory(){
+        std::array<std::byte,MEMSIZE>& memory(){
             return mem;
         }
-        const std::array<std::byte,1048576uz>& memory() const{
+        const std::array<std::byte,MEMSIZE>& memory() const{
             return mem;
         }
-        void mem_write(std::uint64_t value,std::uint64_t addr,std::uint64_t mask=~static_cast<std::uint64_t>(0)){
+        void mem_write(std::uint64_t value,std::uint64_t addr,std::uint64_t mask){
             std::uint64_t new_value{(mem_read(addr)&~mask) | (value&mask)};
             std::memcpy(mem.data()+addr,&new_value,sizeof(std::uint64_t));
         }
@@ -132,52 +136,59 @@ class ProgramState{
         std::uint64_t rreadbgn(std::uint32_t index) const{
             return read(range(index).begin());
         }
-        void rwritebgn(std::uint64_t value,std::uint32_t index,std::uint64_t mask=~static_cast<std::uint64_t>(0)){
-            write(value,range(index).begin(),mask);
+        void rsetbgn(std::uint64_t value,std::uint32_t index){
+            set(value,range(index).begin());
         }
-        void write(std::uint64_t value,reg to,std::uint64_t mask=~static_cast<std::uint64_t>(0)){
-            RegisterSpace::MatchResult range{spc.test(to)};
-            switch(range.index){
+        void set(std::uint64_t value,reg to){
+            regs[to] = value;
+        }
+        void write(std::uint64_t value,reg to,std::uint64_t mask){
+            RegisterSpace::MatchResult rn{spc.test(to)};
+            switch(rn.index){
                 case MEM_INDEX:
-                    mem_write(value,regs[spc[PTR_INDEX][range.offset]],mask);
+                    mem_write(value,regs[spc[PTR_INDEX][rn.offset]],mask);
                     return;
                 case DATA_INDEX:
-                    if(range.offset==0x17){ // Write to d23/s
+                    if(rn.offset==0x0F){ // Write to d15/s
                         std::uint64_t v;
-                        if(range.offset_to_shadow==0){ // write is to shadow
-                            v = rreadbgn(D23S_COUNTER_INDEX)+1;
+                        if(rn.offset_to_shadow==0){ // write is to shadow
+                            v = rreadbgn(D15S_COUNTER_INDEX)+1;
                         }else{
                             v = 0;
                         }
-                        rwritebgn(v,D23S_COUNTER_INDEX);
+                        rsetbgn(v,D15S_COUNTER_INDEX);
                     }
                     break;
                 case WRITE_MASK_INDEX:
-                    mask = ~static_cast<std::uint64_t>(0);
-                    break;
+                    goto writer;
+                case FUNCTION_CONTROL_INDEX:
+                    rsetbgn(rreadbgn(PROGRAM_COUNTER_INDEX),FUNCTION_CONTROL_INDEX);
+                    return write(value,range(PROGRAM_COUNTER_INDEX).begin(),mask);
                 default:;
             }
             value = (regs[to]&~mask) | (value&mask);
-            if(range.index == LOOP_CONTROL_INDEX && value){
-                rwritebgn(rreadbgn(LOOP_POINTER_INDEX),PROGRAM_COUNTER_INDEX);
+            if(rn.index == LOOP_CONTROL_INDEX && value){
+                rsetbgn(rreadbgn(LOOP_POINTER_INDEX),PROGRAM_COUNTER_INDEX);
             }
-            regs[to] = value;
-            if(range.offset_to_shadow){
-                regs[to+range.offset_to_shadow] = value;
+            set(rreadbgn(WRITE_MASK_INDEX),range(WRITE_MASK_INDEX).shadow(0));
+            writer:
+            set(value,to);
+            if(rn.offset_to_shadow){
+                set(value,to+rn.offset_to_shadow);
             }
         }
 };
 void opr(ProgramState& state,reg from,reg to,bool b0,bool b1){
-    state.rwritebgn(state.rreadbgn(PROGRAM_COUNTER_INDEX)+2,PROGRAM_COUNTER_INDEX);
-    std::uint64_t mask = state.read(state.range(WRITE_MASK_INDEX)[1]);
+    state.rsetbgn(state.rreadbgn(PROGRAM_COUNTER_INDEX)+2,PROGRAM_COUNTER_INDEX);
+    std::uint64_t mask = state.read(state.range(WRITE_MASK_INDEX).shadow(0));
     if((b0 || b1) && from==to){
         if(b0){ // LDV
-            std::uint32_t immediate{state.mem_read<std::uint32_t>(state.rreadbgn(PROGRAM_COUNTER_INDEX))};
-            state.rwritebgn(state.rreadbgn(PROGRAM_COUNTER_INDEX)+4,PROGRAM_COUNTER_INDEX);
+            std::int64_t immediate{state.mem_read<std::int32_t>(state.rreadbgn(PROGRAM_COUNTER_INDEX))};
+            state.rsetbgn(state.rreadbgn(PROGRAM_COUNTER_INDEX)+4,PROGRAM_COUNTER_INDEX);
             if(b1){
-                mask = ~static_cast<std::uint64_t>(0);
+                mask = NMASK;
             }
-            state.write(immediate,to,mask);
+            state.write(std::uint64_t(immediate),to,mask);
         }else{ // OPR, zero register
             state.write(0,to,mask);
         }
@@ -186,29 +197,6 @@ void opr(ProgramState& state,reg from,reg to,bool b0,bool b1){
         std::uint64_t value = state.read(from);
         if(b0){ // CAL
             switch(ran.index){
-                case DATA_INDEX:
-                    if(ran.offset<=16){
-                        if(b1){
-                            value = std::byteswap(value);
-                        }
-                        for(std::uint32_t b=8;b--;){
-                            state.write(value&0xFF,to,mask&0xFF);
-                            ++to;
-                            value >>= 8;
-                            mask >>= 8;
-                        }
-                    }else{
-                        value = 0;
-                        for(std::uint32_t b=8;b--;){
-                            value = (value << 8) | state.read(from);
-                            ++from;
-                        }
-                        if(!b1){
-                            value = std::byteswap(value);
-                        }
-                        state.write(value,to,mask);
-                    }
-                    break;
                 case ACC_INDEX:{
                     std::uint64_t u0s = state.read(state.range(UTIL_INDEX).shadow(0));
                     std::uint64_t value2 = state.read(to);
@@ -250,7 +238,7 @@ void opr(ProgramState& state,reg from,reg to,bool b0,bool b1){
                             value2 = ~value;
                             break;
                         case 0b100000:
-                            value2 = value?~static_cast<std::uint64_t>(0):static_cast<std::uint64_t>(0);
+                            value2 = value?NMASK:static_cast<std::uint64_t>(0);
                             break;
                         case 0b101000:
                             value2 = static_cast<std::uint64_t>(std::popcount(value));
@@ -272,22 +260,19 @@ void opr(ProgramState& state,reg from,reg to,bool b0,bool b1){
                 case UTIL_INDEX:
                     if(ran.offset) break;
                     if(b1){
-                        if(from&0b100'0000){
-                            mask = 0b111'000;
-                        }else{
-                            mask = 0b000'111;
-                        }
+                        from <<= 3;
+                        mask = 0b111'000;
                     }else{
-                        mask = 0b111'111;
+                        mask = 0b000'111;
                     }
                     state.write(from,to,mask);
                     break;
                 case WRITE_MASK_INDEX:{
                     mask = (static_cast<std::uint64_t>(1) << (from&63)) - 1;
                     if(from&64){
-                        state.write(~mask,to);
+                        state.write(~mask,to,NMASK);
                     }else{
-                        state.write(mask,to);
+                        state.write(mask,to,NMASK);
                     }
                     break;
                 }
@@ -297,7 +282,7 @@ void opr(ProgramState& state,reg from,reg to,bool b0,bool b1){
                     }else{
                         value += state.read(to);
                     }
-                    state.write(value,to);
+                    state.write(value,to,mask);
                     break;
                 default:;
             }
@@ -306,9 +291,10 @@ void opr(ProgramState& state,reg from,reg to,bool b0,bool b1){
             case PTR_INDEX:
             case MEM_INDEX:
             case UTIL_INDEX:
-            case D23S_COUNTER_INDEX:
+            case D15S_COUNTER_INDEX:
             case PROGRAM_COUNTER_INDEX:
             case LOOP_POINTER_INDEX:
+            case FUNCTION_CONTROL_INDEX:
                 state.write(value,to,mask);
                 break;
             case ACC_INDEX:
@@ -326,7 +312,7 @@ void opr(ProgramState& state,reg from,reg to,bool b0,bool b1){
                 }
                 break;
             case WRITE_MASK_INDEX:
-                state.write(value,to);
+                state.write(value,to,NMASK);
                 break;
             case LOOP_CONTROL_INDEX:
                 state.write(value,to,mask);
@@ -360,31 +346,39 @@ void handle_syscall(ProgramState& state){
             std::fflush(stdout);
             break;
         case 3:
-            state.write(std::fgetc(stdin),state.range(UTIL_INDEX)[3]);
+            state.write(std::fgetc(stdin),state.range(UTIL_INDEX)[3],state.read(state.range(WRITE_MASK_INDEX).shadow(0)));
             break;
+        case 4:
+            std::exit(0);
         default: return;
     }
-    state.write(0,state.range(UTIL_INDEX).shadow(2));
+    state.write(0,state.range(UTIL_INDEX).shadow(2),NMASK);
+}
+void debug(const ProgramState& machine){
+    std::cout << "PC = "sv << machine.rreadbgn(PROGRAM_COUNTER_INDEX) << std::endl;
+    std::cout << "DC = "sv << machine.rreadbgn(D15S_COUNTER_INDEX) << std::endl;
 }
 int main(){
     ProgramState machine{{
-        RegisterRange(0x00,0x18,true), // data d
-        RegisterRange(0x30,0x08,true), // accumulator a
-        RegisterRange(0x40,0x08,true), // bitfield b
-        RegisterRange(0x50,0x10,false), // pointer p
-        RegisterRange(0x60,0x10,false), // memory m
-        RegisterRange(0x70,0x04,true), // utility u
-        RegisterRange(0x78,0x01,false), // d23s counter dc
-        RegisterRange(0x79,0x01,false), // program counter dc
-        RegisterRange(0x7A,0x01,true), // write mask bm
-        RegisterRange(0x7C,0x01,false), // loop pointer lp
-        RegisterRange(0x7D,0x01,false), // loop control lc
+        RegisterRange(0x00,0x10,true), // data d
+        RegisterRange(0x20,0x08,true), // accumulator a
+        RegisterRange(0x30,0x08,true), // bitfield b
+        RegisterRange(0x40,0x10,false), // pointer p
+        RegisterRange(0x50,0x10,false), // memory m
+        RegisterRange(0x60,0x04,true), // utility u
+        RegisterRange(0x68,0x01,false), // d23s counter dc
+        RegisterRange(0x69,0x01,false), // program counter dc
+        RegisterRange(0x6A,0x01,true), // write mask bm
+        RegisterRange(0x6C,0x01,false), // loop pointer lp
+        RegisterRange(0x6D,0x01,false), // loop control lc
+        RegisterRange(0x6E,0x01,false), // function control fc
     }};
     {
         cppp::BinaryFile file{u8"prog.bin"sv,std::ios_base::in|std::ios_base::binary};
         file.read(machine.memory());
     }
     while(machine.read(machine.range(UTIL_INDEX).shadow(1))==0){
+        // debug(machine);
         step(machine);
         handle_syscall(machine);
     }
