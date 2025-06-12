@@ -108,8 +108,4 @@ syscallv 2; flush
 opr A0+5, D0+4 ; --index
 jmp _printnum_printloop
 
-digits:
-db "0123456789"
-
-
 scratch:
