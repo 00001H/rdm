@@ -44,7 +44,7 @@ If Y = 1 and S = D, zeroes D. Otherwise, combines the source value with the dest
 
 D = dX/s, pX, mX, uX/s, dc, pc, bm/s, lp, lc, fc: Copy value. Y is reserved and should be zero.
 D = aX/s: Add value to accumulator. If Y = 1, overwrite accumulator with value instead.
-D = bX/s: OR value to bit-field. If Y = 1, overwrite bit-field with value instead.
+D = bX/s: XOR value to bit-field. If Y = 1, overwrite bit-field with value instead.
 
 
 X = 1, S = D: LDV Load value
@@ -64,9 +64,9 @@ D = aX/s: Combine value to accumulator based on bits 0-2 of u0s. If Y = 1, copie
 011: Unsigned divide by D.
 
 D = bX/s: Combine value to bit-field based on bits 3-5 of u0s. If Y = 1, copies the result into S as well as D.
-000: OR with D.
+000: XOR with D.
 001: AND with D.
-010: XOR with D.
+010: OR with D.
 011: NOT S. (Computation ignores original value of D.)
 100: TEST S. (If S has any bit set, set D to all ones, else all zeroes.)
 101: COUNT S. (Sets D to the number of one bits in S.)

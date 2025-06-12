@@ -226,13 +226,13 @@ void opr(ProgramState& state,reg from,reg to,bool b0,bool b1){
                     std::uint64_t value2 = state.read(to);
                     switch(u0s&0b111000){
                         case 0b000000:
-                            value2 |= value;
+                            value2 ^= value;
                             break;
                         case 0b001000:
                             value2 &= value;
                             break;
                         case 0b010000:
-                            value2 ^= value;
+                            value2 |= value;
                             break;
                         case 0b011000:
                             value2 = ~value;
@@ -308,7 +308,7 @@ void opr(ProgramState& state,reg from,reg to,bool b0,bool b1){
                 if(b1){
                     state.write(value,to,mask);
                 }else{
-                    state.write(state.read(to)|value,to,mask);
+                    state.write(state.read(to)^value,to,mask);
                 }
                 break;
             case WRITE_MASK_INDEX:
