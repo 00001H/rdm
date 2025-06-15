@@ -15,8 +15,8 @@ call printnum
 
 ldv D0+4, comma
 call puts
-ldv B0+4, 0b1000100000
-ldv B0+5, 0b1100000000
+ldv B0+4, 0b1011100000
+ldv B0+5, 0b0111000000
 opr B0+4, B0+5
 opr D0+4, B0+4
 call printnum
