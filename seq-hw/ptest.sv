@@ -15,7 +15,7 @@ module ptest();
         end
         mem = '{1024{{16'h0}}};
         mem[0] = 'h006F;
-        mem[1] = 'h6F00;
+        mem[1] = 'h6F10;
         forever begin
             clk = 0;
             $display("PC = %d",pc);

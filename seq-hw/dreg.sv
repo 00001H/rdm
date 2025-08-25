@@ -7,6 +7,8 @@ module dreg(input clk, input[4:0] ra, output`WORD rval, input w, input[4:0] wa, 
     always @(posedge clk) begin
         if(w) begin
             rfile[wa] <= wval;
+            if(wa<'h10)
+                rfile[wa+'h10] <= wval;
         end
     end
 endmodule
