@@ -19,11 +19,14 @@ There are 124 64-bit registers. Each register can either be a physical register,
 6Ch:     Loop pointer register lp.
 6Dh:     Loop control register lc.
 6Eh:     Function control register fc.
+6Fh:     Pin pseudo-register ep.
 
 When a non-shadow register is updated, its corresponding shadow is also overwritten with the new value, but updating the shadow will not change the original register. Whenever a write happens to d15s, dc is incremented (unmasked), and whenever a write happens to d15, dc is reset to zero.
 
 Whenever a nonzero value is written to lc, pc is set to lp (unmasked).
 Instead of writing value V to fc, unmasked copy pc (which points to the next instruction) to fc, then copy V to pc (whether this is masked depends on the instruction).
+
+Reading from ep reads the values of input pins, writing writes to output pins.
 
 Notation: a lowercase n references an arbitrary register type, and X references an arbitrary register index. "/s" after a register or register range means "it or its shadow". Therefore, "aX/s" means "any accumulator or accumulator shadow register" and nX means "any non-shadow register" (this also includes special registers like dc, pc and bm).
 

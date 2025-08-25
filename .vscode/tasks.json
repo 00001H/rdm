@@ -16,7 +16,18 @@
             "label": "Run",
             "command": "${workspaceFolder}/main",
             "problemMatcher": [],
-            "dependsOn": ["Compile","Assemble test code"],
+            "dependsOn": ["Compile","Assemble test code"]
+        },
+        {
+            "label": "Verilate",
+            "command": "verilator",
+            "args": ["--binary","-j","0","-Wall","-Wno-unusedsignal","-Wno-genunnamed","-y","seq-hw","ptest"]
+        },
+        {
+            "label": "Run Hardware Sim",
+            "command": "${workspaceFolder}/obj_dir/Vptest",
+            "problemMatcher": [],
+            "dependsOn": ["Verilate"],
             "group": "test"
         }
     ]
