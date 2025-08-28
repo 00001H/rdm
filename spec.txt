@@ -78,5 +78,5 @@ D = bX/s: Combine value to bit-field based on bits 3-5 of u0s. If Y = 1, copies 
 
 D = u0/s: Copy the first instruction byte into D with mask 7, ignoring bms. If Y = 1, left shift the first instruction byte by 3 and write into D with mask 56 instead.
 D = pc: Unmasked add the lower 7 bits of the first instruction byte(sign-extended) to pc.
-D = bm/s, bmt: Let the lower 7 bits of the first instruction byte be L, set the i-th lowest bit of D to (L-64 <= i && i < L).
+D = bm/s: Let the lower 7 bits of the first instruction byte be L, set the i-th lowest bit of D to (L-64 <= i && i < L).
 D = lc: add S to lc if Y = 0, else subtract S from lc.
