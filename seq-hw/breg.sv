@@ -1,8 +1,8 @@
 `include "spec.sv"
-module breg(input clk, input rst, input[3:0] ra, output`WORD rval, input w, input y, input[3:0] wa, input`WORD wval);
+module breg(input wire clk, input wire rst, input wire[3:0] ra, output wire`WORD rval, input wire w, input wire y, input wire[3:0] wa, input wire`WORD wval);
     assign rval = rfile[ra];
 
-    reg`WORD rfile[15:0];
+    logic`WORD rfile[15:0];
     
     wire`WORD nval = y?wval:(rfile[wa]^wval);
     always @(posedge clk or posedge rst) begin

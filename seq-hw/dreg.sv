@@ -1,8 +1,8 @@
 `include "spec.sv"
-module dreg(input clk, input rst, input[4:0] ra, output`WORD rval, input w, input[4:0] wa, input`WORD wval);
+module dreg(input wire clk, input wire rst, input wire[4:0] ra, output wire`WORD rval, input wire w, input wire[4:0] wa, input wire`WORD wval);
     assign rval = rfile[ra];
 
-    reg`WORD rfile[31:0];
+    logic`WORD rfile[31:0];
     
     always @(posedge clk or posedge rst) begin
         if(rst)

@@ -9,8 +9,9 @@
         {
             "label": "Assemble test code",
             "command": "nasm",
-            "args": ["-fbin","-oprog.bin","prog.asm"],
-            "problemMatcher": []
+            "args": ["-fbin","-o","${fileDirname}${pathSeparator}${fileBasenameNoExtension}.bin","${fileDirname}${pathSeparator}${fileBasenameNoExtension}.asm"],
+            "problemMatcher": [],
+            "group": "build"
         },
         {
             "label": "Run",

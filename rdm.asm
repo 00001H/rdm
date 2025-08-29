@@ -17,6 +17,7 @@ BMS equ 0x6B
 LP equ 0x6C
 LC equ 0x6D
 FC equ 0x6E
+EP equ 0x6F
 %macro opr 2
 db %2, %1
 %endmacro

@@ -1,4 +1,23 @@
-`define NRSPACES 14
+`define NRSPACES 18
 `define PER_RSP [`NRSPACES-1:0]
+`define SP_D 0
+`define SP_DS 1
+`define SP_A 2
+`define SP_AS 3
+`define SP_B 4
+`define SP_BS 5
+`define SP_P 6
+`define SP_M 7
+`define SP_U 8
+`define SP_US 9
+`define SP_DC 10
+`define SP_PC 11
+`define SP_BM 12
+`define SP_BMS 13
+`define SP_LP 14
+`define SP_LC 15
+`define SP_FC 16
+`define SP_EP 17
+
 `define BITNESS 64
 `define WORD [`BITNESS-1:0]
