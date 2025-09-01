@@ -1,4 +1,4 @@
-`include "spec.sv"
+`include "commons.sv"
 module rbswitch(input wire[6:0] r,output wire space`PER_RSP);
     assign space = {
         r=='h6F,                              // ep

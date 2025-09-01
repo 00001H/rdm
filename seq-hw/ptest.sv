@@ -1,4 +1,4 @@
-`include "spec.sv"
+`include "commons.sv"
 
 module ptest();
     logic clk;
@@ -36,6 +36,7 @@ module ptest();
                 $display("terminating");
                 break;
             end
+            $display("pins: %d %d %d %d",pin_out[0],pin_out[1],pin_out[2],pin_out[3]);
             if(pin_out[1]) break;
         end
     end
