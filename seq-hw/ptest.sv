@@ -12,14 +12,17 @@ module ptest();
     processor proc(clk,rst,pc,ins,pin_in,pin_out);
     
     logic[31:0] test_prog_handle;
+    logic[31:0] outf_handle;
     initial begin
         pin_in = '{`BITNESS{{1'h0}}};
         pin_in[0] = 1;
         
         test_prog_handle = $fopen("seq-hw/hwtest.bin","rb");
+        outf_handle = $fopen("seq-hw/out.txt","w");
         $fread(mem,test_prog_handle,0,1024); // reads in big endian
         for(integer i=0;i<1024;++i)
             {mem[i][7:0],mem[i][15:8]} = {mem[i][15:8],mem[i][7:0]}; // byteswap
+        $fclose(test_prog_handle);
         
         clk = 0;
         rst = 1;
@@ -31,13 +34,20 @@ module ptest();
             #10;
             clk = 1;
             #10;
-            if(pc > 15) begin
+            if(pc > 50) begin
                 $display("Execution fell off the end of program :(");
                 $display("terminating");
                 break;
             end
             $display("pins: %d %d %d %d",pin_out[0],pin_out[1],pin_out[2],pin_out[3]);
             if(pin_out[1]) break;
+            if(pin_out[0]) begin
+                logic[7:0] pch;
+                for(integer i=0;i<8;++i) pch[i] = pin_out[i+2];
+                $display("%c",pch);
+                $fwrite(outf_handle,"%c",pch);
+            end
         end
+        $fclose(outf_handle);
     end
 endmodule
