@@ -1,6 +1,6 @@
 RDM: Three-instruction RISC ISA with 16-bit instructions
 
-There are 124 64-bit registers. Each register can either be a physical register, or a *pseudo-register*. Pseudo-registers are like device files: They are actually proxies to external components like RAM.
+There are 127 64-bit registers (some still reserved). Each register can either be a physical register, or a *pseudo-register*. Pseudo-registers are like device files: They are actually proxies to external components like RAM.
 
 00h-0Fh: General-purpose registers d0-d15.
 10h-1Fh: GPR shadows d0s-d15s.
