@@ -1,8 +1,8 @@
 `include "commons.sv"
 module dreg(input wire clk, input wire rst, input wire[4:0] ra, output wire`WORD rval, input wire w, input wire[4:0] wa, input wire`WORD wval,input wire`WORD mask);
-    assign rval = rfile[ra];
-
     logic`WORD rfile[31:0];
+
+    assign rval = rfile[ra];
 
     wire`WORD write = masked(rfile[wa],wval,mask);
     
