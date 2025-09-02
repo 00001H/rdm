@@ -34,6 +34,8 @@ module processor(input wire clk, input wire rst, output logic`WORD pc, input wir
     assign module_reads[`SP_LC] = lc;
     for(genvar i=0;i<`BITNESS;++i)
         assign module_reads[`SP_EP][i] = pin_in[i];
+        
+    wire`WORD writemask = (module_write_mask[`SP_BM]||module_write_mask[`SP_BMS])?`BITNESS'b1:bms;
     
     dreg data(clk,rst,S[4:0],module_reads[`SP_D],module_write_mask[`SP_D],D[4:0],write,writemask);
     areg arith(clk,rst,S[3:0],module_reads[`SP_A],module_write_mask[`SP_A],i1,D[3:0],write,writemask);
@@ -43,7 +45,6 @@ module processor(input wire clk, input wire rst, output logic`WORD pc, input wir
         assign read = {`BITNESS{{module_read_mask[i]}}}&module_reads[i];
     
     assign write = zreg?0:read;
-    wire`WORD writemask = (module_write_mask[`SP_BM]||module_write_mask[`SP_BMS])?`BITNESS'b1:bms;
 
     always @(posedge clk or posedge rst) begin
         if(rst) begin

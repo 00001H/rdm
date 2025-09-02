@@ -1,8 +1,8 @@
 `include "commons.sv"
 module breg(input wire clk, input wire rst, input wire[3:0] ra, output wire`WORD rval, input wire w, input wire y, input wire[3:0] wa, input wire`WORD wval,input wire`WORD mask);
-    assign rval = rfile[ra];
-
     logic`WORD rfile[15:0];
+    
+    assign rval = rfile[ra];
     
     wire`WORD nval = y?wval:(rfile[wa]^wval);
     wire`WORD write = masked(rfile[wa],nval,mask);
