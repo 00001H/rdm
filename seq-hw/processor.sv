@@ -1,6 +1,6 @@
 `include "commons.sv"
 
-module processor(input wire clk, input wire rst, output logic`WORD pc, input wire[15:0] instruction, input wire pin_in`WORD, output logic pin_out`WORD);
+module processor(input wire clk, input wire rst, output logic`WORD pc, input wire[15:0] instruction, input wire pin_in`WORD, output logic pin_out`WORD, input wire[31:0] imm);
     wire`WORD module_reads`PER_RSP;
     wire module_read_mask`PER_RSP;
     wire module_write_mask`PER_RSP;

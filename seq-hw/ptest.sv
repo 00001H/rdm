@@ -3,25 +3,26 @@
 module ptest();
     logic clk;
     logic rst;
-    logic[15:0] mem[0:1023];
     logic pin_in`WORD;
     logic pin_out`WORD;
     wire`WORD pc;
-    wire[15:0] ins = mem[pc[9:0]];
     
-    processor proc(clk,rst,pc,ins,pin_in,pin_out);
+    wire`WORD m_addr;
+    wire[7:0] m_write;
+    wire[7:0] m_read;
+    test_mem memory(clk,m_addr,m_write,m_read);
+    cpu proc(clk,rst,m_addr,m_read,pin_in,pin_out,pc);
     
     logic[31:0] test_prog_handle;
     logic[31:0] outf_handle;
     initial begin
+        force m_write = 0;
         pin_in = '{`BITNESS{{1'h0}}};
         pin_in[0] = 1;
         
         test_prog_handle = $fopen("seq-hw/hwtest.bin","rb");
         outf_handle = $fopen("seq-hw/out.txt","w");
-        $fread(mem,test_prog_handle,0,1024); // reads in big endian
-        for(integer i=0;i<1024;++i)
-            {mem[i][7:0],mem[i][15:8]} = {mem[i][15:8],mem[i][7:0]}; // byteswap
+        $fread(memory.m,test_prog_handle,0,1024);
         $fclose(test_prog_handle);
         
         clk = 0;
