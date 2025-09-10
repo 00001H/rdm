@@ -10,7 +10,7 @@ module ptest();
     wire`WORD m_addr;
     wire[7:0] m_write;
     wire[7:0] m_read;
-    test_mem memory(clk,m_addr,m_write,m_read);
+    test_mem memory(m_addr,m_read);
     cpu proc(clk,rst,m_addr,m_read,pin_in,pin_out,pc);
     
     logic[31:0] test_prog_handle;
@@ -30,9 +30,11 @@ module ptest();
         #5;
         rst = 0;
         forever begin
+            $display("Falling edge. PC = %d",pc[5:0]);
+            // $display("Memory bus content: %d @ addr %d",m_read,m_addr);
             clk = 0;
-            $display("PC = %d",pc);
             #10;
+            // $display("Rising edge. PC = %d",pc);
             clk = 1;
             #10;
             if(pc > 50) begin
@@ -40,7 +42,7 @@ module ptest();
                 $display("terminating");
                 break;
             end
-            $display("pins: %d %d %d %d",pin_out[0],pin_out[1],pin_out[2],pin_out[3]);
+            // $display("pins: %d %d %d %d",pin_out[0],pin_out[1],pin_out[2],pin_out[3]);
             if(pin_out[1]) break;
             if(pin_out[0]) begin
                 logic[7:0] pch;

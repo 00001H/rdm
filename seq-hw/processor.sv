@@ -6,7 +6,7 @@ module processor(input wire clk, input wire rst, output logic`WORD pc, input wir
     wire module_write_mask`PER_RSP;
     wor`WORD read;
     wire`WORD write;
-    wire`WORD next_pc = pc+1;
+    wire`WORD next_pc = pc+2;
     logic`WORD bm;
     logic`WORD bms;
     logic`WORD lp;
@@ -47,6 +47,7 @@ module processor(input wire clk, input wire rst, output logic`WORD pc, input wir
     assign write = zreg?0:read;
 
     always @(posedge clk or posedge rst) begin
+        // $display("Executing X%dY%d, S%dD%d",i0,i1,S,D);
         if(rst) begin
             pc <= 0;
             bm <= 0;
